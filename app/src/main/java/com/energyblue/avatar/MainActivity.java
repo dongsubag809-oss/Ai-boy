@@ -41,7 +41,7 @@ public class MainActivity extends Activity {
  Runnable mouthTick=new Runnable(){boolean open=false;public void run(){if(!speaking)return;open=!open;portrait.setMouthOpen(open?0.95f:0.08f);handler.postDelayed(this,125);}};
  @Override public void onCreate(Bundle b){super.onCreate(b);
  LinearLayout root=new LinearLayout(this);root.setOrientation(1);root.setPadding(20,56,20,16);root.setBackgroundColor(Color.rgb(247,249,253));
- TextView title=new TextView(this);title.setText("EB AI 아바타 V1.3 · OpenAI 대화");title.setTextSize(23);title.setTypeface(null,Typeface.BOLD);root.addView(title);
+ TextView title=new TextView(this);title.setText("EB AI 아바타 V1.4 · 오프라인 얼굴 움직임");title.setTextSize(23);title.setTypeface(null,Typeface.BOLD);root.addView(title);
  FrameLayout frame=new FrameLayout(this);portrait=new AvatarView();frame.addView(portrait,new FrameLayout.LayoutParams(-1,-1));
  mouth=new TextView(this);mouth.setText("━");mouth.setTextSize(27);mouth.setTextColor(Color.RED);mouth.setGravity(Gravity.CENTER);
  FrameLayout.LayoutParams mp=new FrameLayout.LayoutParams(55,55,Gravity.BOTTOM|Gravity.CENTER_HORIZONTAL);mp.bottomMargin=55;mouth.setVisibility(View.GONE);frame.addView(mouth,mp);
@@ -120,7 +120,7 @@ public class MainActivity extends Activity {
  }
  void speak(String message){if(tts==null){status.setText("음성 엔진 준비 중입니다.");return;}status.setText("아바타 음성 출력: "+message);tts.speak(message,TextToSpeech.QUEUE_FLUSH,null,"reply");}
   class AvatarView extends View {
-  Bitmap bitmap; Paint paint=new Paint(3);float mouthOpen=0f;float mouthX=.5f,mouthY=.46f;boolean mouthSelected=false;float faceCX=.5f,faceCY=.4f,faceRX=.18f,faceRY=.25f;boolean detected=false;
+  Bitmap bitmap; Paint paint=new Paint(3);float mouthOpen=0f;float mouthX=.5f,mouthY=.46f;boolean mouthSelected=false;float faceCX=.5f,faceCY=.4f,faceRX=.18f,faceRY=.25f;boolean detected=false;long animationStart=android.os.SystemClock.uptimeMillis();
   AvatarView(){super(MainActivity.this);}
   void setPhoto(Bitmap b){bitmap=b;mouthSelected=false;detected=false;mouthX=.5f;mouthY=.46f;invalidate();}
   void setLandmarks(java.util.List<NormalizedLandmark> lm){
@@ -139,9 +139,9 @@ public class MainActivity extends Activity {
     float width=bitmap.getWidth()*scale,height=bitmap.getHeight()*scale;
     float left=(getWidth()-width)/2f,top=(getHeight()-height)/2f;
     RectF dst=new RectF(left,top,left+width,top+height);canvas.drawBitmap(bitmap,null,dst,paint);
-    if(mouthOpen<=0.01f||!mouthSelected)return;
+    if(!detected)return;
     float mx=left+width*mouthX,my=top+height*mouthY;
-    // Move only the facial oval by a subtle amount, preserving the clothing.
+    // Offline micro-motion only: no fabricated mouth or skin patches.
     if(detected){
       float cx=left+width*faceCX,cy=top+height*faceCY;
       float rx=width*faceRX,ry=height*faceRY;
@@ -155,7 +155,7 @@ public class MainActivity extends Activity {
       canvas.restore();
     }
     // Never paint artificial dark mouth shapes over the user's original lips.
-    // Natural lip-sync requires a dedicated on-device animation model.
+    // Natural lip-sync and blinking require a real on-device image animation model.
 
   }
  }
