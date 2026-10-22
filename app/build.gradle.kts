@@ -11,6 +11,6 @@ android {
      storeType = "PKCS12"
    }
  }
- defaultConfig { applicationId = "com.energyblue.avatar.v07"; minSdk = 26; targetSdk = 35; versionCode = 9; versionName = "0.9" }
+ defaultConfig { applicationId = "com.energyblue.avatar.v07"; minSdk = 26; targetSdk = 35; versionCode = 10; versionName = "1.0" }
  buildTypes { getByName("release") { isMinifyEnabled = false; signingConfig = signingConfigs.getByName("stable") } }
 }
