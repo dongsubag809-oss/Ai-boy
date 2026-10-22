@@ -33,6 +33,6 @@ jobs:
         run: gradle --no-daemon :app:assembleRelease
       - uses: actions/upload-artifact@v4
         with:
-          name: Ai-boy-V0.9-signed-APK
+          name: Ai-boy-V1.0-signed-APK
           path: app/build/outputs/apk/release/*.apk
           if-no-files-found: error
