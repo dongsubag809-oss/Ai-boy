@@ -15,4 +15,4 @@ android {
  buildTypes { getByName("release") { isMinifyEnabled = false; signingConfig = signingConfigs.getByName("stable") } }
 }
 
-dependencies { implementation("com.google.mediapipe:tasks-vision:0.10.22") }
+dependencies { implementation("com.google.mediapipe:tasks-vision:0.10.14") }
