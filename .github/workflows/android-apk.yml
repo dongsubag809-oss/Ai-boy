@@ -27,12 +27,19 @@ jobs:
           test -n "$KEY_BASE64" && test -n "$AI_BOY_KEYSTORE_PASSWORD" || { echo "Missing signing secrets"; exit 1; }
           mkdir -p signing
           printf '%s' "$KEY_BASE64" | base64 --decode > signing/ai-boy.p12
+      - name: Bundle offline MediaPipe Face Landmarker model
+        run: |
+          mkdir -p app/src/main/assets
+          curl --fail --location --retry 3 --silent --show-error \
+            'https://storage.googleapis.com/mediapipe-models/face_landmarker/face_landmarker/float16/1/face_landmarker.task' \
+            -o app/src/main/assets/face_landmarker.task
+          test "$(wc -c < app/src/main/assets/face_landmarker.task)" -gt 1000000
       - name: Build signed release APK
         env:
           AI_BOY_KEYSTORE_PASSWORD: ${{ secrets.AI_BOY_KEYSTORE_PASSWORD }}
         run: gradle --no-daemon :app:assembleRelease
       - uses: actions/upload-artifact@v4
         with:
-          name: Ai-boy-V1.0-signed-APK
+          name: Ai-boy-V1.1-MediaPipe-offline-APK
           path: app/build/outputs/apk/release/*.apk
           if-no-files-found: error
