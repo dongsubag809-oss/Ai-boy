@@ -10,6 +10,7 @@ import android.graphics.Paint;
 import android.graphics.Rect;
 import android.graphics.RectF;
 import android.view.View;
+import android.view.MotionEvent;
 import android.graphics.Typeface;
 import android.speech.RecognizerIntent;
 import android.speech.tts.TextToSpeech;
@@ -31,11 +32,12 @@ public class MainActivity extends Activity {
  Runnable mouthTick=new Runnable(){boolean open=false;public void run(){if(!speaking)return;open=!open;portrait.setMouthOpen(open?0.95f:0.08f);handler.postDelayed(this,170);}};
  @Override public void onCreate(Bundle b){super.onCreate(b);
  LinearLayout root=new LinearLayout(this);root.setOrientation(1);root.setPadding(20,56,20,16);root.setBackgroundColor(Color.rgb(247,249,253));
- TextView title=new TextView(this);title.setText("EB AI 아바타 V0.8");title.setTextSize(23);title.setTypeface(null,Typeface.BOLD);root.addView(title);
+ TextView title=new TextView(this);title.setText("EB AI 아바타 V1.1");title.setTextSize(23);title.setTypeface(null,Typeface.BOLD);root.addView(title);
  FrameLayout frame=new FrameLayout(this);portrait=new AvatarView();frame.addView(portrait,new FrameLayout.LayoutParams(-1,-1));
  mouth=new TextView(this);mouth.setText("━");mouth.setTextSize(27);mouth.setTextColor(Color.RED);mouth.setGravity(Gravity.CENTER);
  FrameLayout.LayoutParams mp=new FrameLayout.LayoutParams(55,55,Gravity.BOTTOM|Gravity.CENTER_HORIZONTAL);mp.bottomMargin=55;mouth.setVisibility(View.GONE);frame.addView(mouth,mp);
  root.addView(frame,new LinearLayout.LayoutParams(-1,0,1));
+ TextView guide=new TextView(this);guide.setText("사진을 선택한 후 입술 중앙을 한 번 터치하세요.");root.addView(guide);
  status=new TextView(this);status.setText("사진을 선택하세요.");status.setVisibility(View.VISIBLE);root.addView(status);
  Button demo=new Button(this);demo.setText("사진 움직임 / 음성 테스트");root.addView(demo);demo.setOnClickListener(v->speak("안녕하세요. 사진 아바타가 말하고 있습니다. 입 움직임을 확인해 주세요."));
  Button photo=new Button(this);photo.setText("사진 선택");root.addView(photo);
@@ -53,9 +55,10 @@ public class MainActivity extends Activity {
  void send(String message){status.setText("인식: "+message+"\n서버 없이 음성으로 따라 말합니다.");speak(message);}
  void speak(String message){if(tts==null){status.setText("음성 엔진 준비 중입니다.");return;}status.setText("아바타 음성 출력: "+message);tts.speak(message,TextToSpeech.QUEUE_FLUSH,null,"reply");}
   class AvatarView extends View {
-  Bitmap bitmap; Paint paint=new Paint(3);float mouthOpen=0f;
+  Bitmap bitmap; Paint paint=new Paint(3);float mouthOpen=0f;float mouthX=.5f,mouthY=.46f;boolean mouthSelected=false;
   AvatarView(){super(MainActivity.this);}
-  void setPhoto(Bitmap b){bitmap=b;invalidate();}
+  void setPhoto(Bitmap b){bitmap=b;mouthSelected=false;mouthX=.5f;mouthY=.46f;invalidate();}
+  @Override public boolean onTouchEvent(MotionEvent event){if(event.getAction()!=MotionEvent.ACTION_UP||bitmap==null)return true;float scale=Math.min((float)getWidth()/bitmap.getWidth(),(float)getHeight()/bitmap.getHeight());float w=bitmap.getWidth()*scale,h=bitmap.getHeight()*scale,l=(getWidth()-w)/2f,t=(getHeight()-h)/2f;float x=(event.getX()-l)/w,y=(event.getY()-t)/h;if(x>=0&&x<=1&&y>=0&&y<=1){mouthX=x;mouthY=y;mouthSelected=true;status.setText("입술 위치 지정 완료. 음성 테스트를 눌러 확인하세요.");invalidate();}return true;}
   void setMouthOpen(float amount){mouthOpen=amount;invalidate();}
   @Override protected void onDraw(Canvas canvas){super.onDraw(canvas);if(bitmap==null)return;
     float scale=Math.min((float)getWidth()/bitmap.getWidth(),(float)getHeight()/bitmap.getHeight());
@@ -65,11 +68,11 @@ public class MainActivity extends Activity {
     if(mouthOpen<=0.01f)return;
     // V0.4 prototype: distort the original photo's mouth area rather than overlaying a symbol.
     // Assumes a front-facing centered portrait; facial landmark detection is not yet included.
-    float mx=left+width*.5f,my=top+height*.73f;
+    float mx=left+width*mouthX,my=top+height*mouthY;
     float mw=width*.15f,mh=height*.055f;
-    int sx=Math.max(0,(int)(bitmap.getWidth()*.425f)),sy=Math.max(0,(int)(bitmap.getHeight()*.705f));
-    int ex=Math.min(bitmap.getWidth(),(int)(bitmap.getWidth()*.575f));
-    int ey=Math.min(bitmap.getHeight(),(int)(bitmap.getHeight()*.76f));
+    int sx=Math.max(0,(int)(bitmap.getWidth()*(mouthX-.075f))),sy=Math.max(0,(int)(bitmap.getHeight()*(mouthY-.025f)));
+    int ex=Math.min(bitmap.getWidth(),(int)(bitmap.getWidth()*(mouthX+.075f)));
+    int ey=Math.min(bitmap.getHeight(),(int)(bitmap.getHeight()*(mouthY+.03f)));
     if(ex<=sx||ey<=sy)return;
     Rect src=new Rect(sx,sy,ex,ey);
     canvas.save();canvas.clipRect(mx-mw/2,my-mh*.8f,mx+mw/2,my+mh*(.8f+mouthOpen));
