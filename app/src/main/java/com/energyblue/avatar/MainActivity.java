@@ -65,19 +65,30 @@ public class MainActivity extends Activity {
     float width=bitmap.getWidth()*scale,height=bitmap.getHeight()*scale;
     float left=(getWidth()-width)/2f,top=(getHeight()-height)/2f;
     RectF dst=new RectF(left,top,left+width,top+height);canvas.drawBitmap(bitmap,null,dst,paint);
-    if(mouthOpen<=0.01f)return;
-    // V0.4 prototype: distort the original photo's mouth area rather than overlaying a symbol.
-    // Assumes a front-facing centered portrait; facial landmark detection is not yet included.
+    if(mouthOpen<=0.01f||!mouthSelected)return;
+    // Subtle jaw opening: preserve the original upper lip and cheeks.
     float mx=left+width*mouthX,my=top+height*mouthY;
-    float mw=width*.15f,mh=height*.055f;
-    int sx=Math.max(0,(int)(bitmap.getWidth()*(mouthX-.075f))),sy=Math.max(0,(int)(bitmap.getHeight()*(mouthY-.025f)));
-    int ex=Math.min(bitmap.getWidth(),(int)(bitmap.getWidth()*(mouthX+.075f)));
-    int ey=Math.min(bitmap.getHeight(),(int)(bitmap.getHeight()*(mouthY+.03f)));
-    if(ex<=sx||ey<=sy)return;
-    Rect src=new Rect(sx,sy,ex,ey);
-    canvas.save();canvas.clipRect(mx-mw/2,my-mh*.8f,mx+mw/2,my+mh*(.8f+mouthOpen));
-    RectF warped=new RectF(mx-mw/2,my-mh*(.25f+mouthOpen*.25f),mx+mw/2,my+mh*(.65f+mouthOpen));
-    canvas.drawBitmap(bitmap,src,warped,paint);canvas.restore();
+    float mw=width*.115f;
+    float gap=Math.min(width*.020f,height*.012f)*mouthOpen;
+    float lipH=Math.min(width*.012f,height*.008f);
+    // Dark interior appears only between the lips, rather than stretching the photograph.
+    Paint inside=new Paint(3);
+    inside.setColor(Color.rgb(65,23,30));
+    RectF opening=new RectF(mx-mw*.40f,my-gap*.38f,mx+mw*.40f,my+gap*.65f);
+    canvas.drawOval(opening,inside);
+    // Keep the lip edge soft and close to the source photograph.
+    Paint lip=new Paint(3);
+    lip.setStyle(Paint.Style.STROKE);
+    lip.setStrokeWidth(Math.max(1f,lipH*.42f));
+    lip.setColor(Color.argb(140,116,57,65));
+    android.graphics.Path upper=new android.graphics.Path();
+    upper.moveTo(mx-mw*.45f,my);
+    upper.quadTo(mx,my-gap*.52f,mx+mw*.45f,my);
+    canvas.drawPath(upper,lip);
+    android.graphics.Path lower=new android.graphics.Path();
+    lower.moveTo(mx-mw*.45f,my);
+    lower.quadTo(mx,my+gap*.84f,mx+mw*.45f,my);
+    canvas.drawPath(lower,lip);
   }
  }
  @Override protected void onDestroy(){stopMouth();if(tts!=null){tts.stop();tts.shutdown();}super.onDestroy();}
