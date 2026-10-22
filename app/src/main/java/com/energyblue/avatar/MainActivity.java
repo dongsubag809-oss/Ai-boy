@@ -31,7 +31,7 @@ public class MainActivity extends Activity {
  Runnable mouthTick=new Runnable(){boolean open=false;public void run(){if(!speaking)return;open=!open;portrait.setMouthOpen(open?0.95f:0.08f);handler.postDelayed(this,170);}};
  @Override public void onCreate(Bundle b){super.onCreate(b);
  LinearLayout root=new LinearLayout(this);root.setOrientation(1);root.setPadding(20,24,20,16);root.setBackgroundColor(Color.rgb(247,249,253));
- TextView title=new TextView(this);title.setText("EB AI 아바타 V0.3");title.setTextSize(23);title.setTypeface(null,Typeface.BOLD);root.addView(title);
+ TextView title=new TextView(this);title.setText("EB AI 아바타 V0.4");title.setTextSize(23);title.setTypeface(null,Typeface.BOLD);root.addView(title);
  FrameLayout frame=new FrameLayout(this);portrait=new AvatarView();frame.addView(portrait,new FrameLayout.LayoutParams(-1,-1));
  mouth=new TextView(this);mouth.setText("━");mouth.setTextSize(27);mouth.setTextColor(Color.RED);mouth.setGravity(Gravity.CENTER);
  FrameLayout.LayoutParams mp=new FrameLayout.LayoutParams(55,55,Gravity.BOTTOM|Gravity.CENTER_HORIZONTAL);mp.bottomMargin=55;mouth.setVisibility(View.GONE);frame.addView(mouth,mp);
