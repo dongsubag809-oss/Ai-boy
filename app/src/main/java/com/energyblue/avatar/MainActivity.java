@@ -3,6 +3,13 @@ import android.app.Activity;
 import android.os.Bundle;
 import android.content.Intent;
 import android.graphics.Color;
+import android.graphics.Path;
+import android.graphics.Matrix;
+import com.google.mediapipe.tasks.vision.facelandmarker.FaceLandmarker;
+import com.google.mediapipe.tasks.vision.facelandmarker.FaceLandmarkerResult;
+import com.google.mediapipe.tasks.core.BaseOptions;
+import com.google.mediapipe.framework.image.BitmapImageBuilder;
+import com.google.mediapipe.tasks.components.containers.NormalizedLandmark;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
 import android.graphics.Canvas;
@@ -27,17 +34,17 @@ import java.util.ArrayList;
 import java.util.Locale;
 public class MainActivity extends Activity {
  static final int PHOTO=10,SPEECH=11;
- AvatarView portrait;TextView status,mouth;TextToSpeech tts;
+ AvatarView portrait;TextView status,mouth;TextToSpeech tts;FaceLandmarker faceLandmarker;
  Handler handler=new Handler();boolean speaking=false;
- Runnable mouthTick=new Runnable(){boolean open=false;public void run(){if(!speaking)return;open=!open;portrait.setMouthOpen(open?0.95f:0.08f);handler.postDelayed(this,170);}};
+ Runnable mouthTick=new Runnable(){boolean open=false;public void run(){if(!speaking)return;open=!open;portrait.setMouthOpen(open?0.95f:0.08f);handler.postDelayed(this,125);}};
  @Override public void onCreate(Bundle b){super.onCreate(b);
  LinearLayout root=new LinearLayout(this);root.setOrientation(1);root.setPadding(20,56,20,16);root.setBackgroundColor(Color.rgb(247,249,253));
- TextView title=new TextView(this);title.setText("EB AI 아바타 V1.1");title.setTextSize(23);title.setTypeface(null,Typeface.BOLD);root.addView(title);
+ TextView title=new TextView(this);title.setText("EB AI 아바타 V1.1 · MediaPipe");title.setTextSize(23);title.setTypeface(null,Typeface.BOLD);root.addView(title);
  FrameLayout frame=new FrameLayout(this);portrait=new AvatarView();frame.addView(portrait,new FrameLayout.LayoutParams(-1,-1));
  mouth=new TextView(this);mouth.setText("━");mouth.setTextSize(27);mouth.setTextColor(Color.RED);mouth.setGravity(Gravity.CENTER);
  FrameLayout.LayoutParams mp=new FrameLayout.LayoutParams(55,55,Gravity.BOTTOM|Gravity.CENTER_HORIZONTAL);mp.bottomMargin=55;mouth.setVisibility(View.GONE);frame.addView(mouth,mp);
  root.addView(frame,new LinearLayout.LayoutParams(-1,0,1));
- TextView guide=new TextView(this);guide.setText("사진을 선택한 후 입술 중앙을 한 번 터치하세요.");root.addView(guide);
+ TextView guide=new TextView(this);guide.setText("MediaPipe가 얼굴과 입술을 자동 인식합니다. 실패하면 입술을 터치하세요.");root.addView(guide);
  status=new TextView(this);status.setText("사진을 선택하세요.");status.setVisibility(View.VISIBLE);root.addView(status);
  Button demo=new Button(this);demo.setText("사진 움직임 / 음성 테스트");root.addView(demo);demo.setOnClickListener(v->speak("안녕하세요. 사진 아바타가 말하고 있습니다. 입 움직임을 확인해 주세요."));
  Button photo=new Button(this);photo.setText("사진 선택");root.addView(photo);
@@ -48,16 +55,46 @@ public class MainActivity extends Activity {
  TextView note=new TextView(this);note.setText("AI 합성 아바타 · 사진 사용 동의 필요");root.addView(note);setContentView(root);
  tts=new TextToSpeech(this,s->{if(s==TextToSpeech.SUCCESS){tts.setLanguage(Locale.KOREAN);tts.setOnUtteranceProgressListener(new android.speech.tts.UtteranceProgressListener(){public void onStart(String id){runOnUiThread(()->{speaking=true;handler.post(mouthTick);});}public void onDone(String id){runOnUiThread(()->stopMouth());}public void onError(String id){runOnUiThread(()->stopMouth());}});}});
  }
+ void detectFace(Bitmap b){
+   if(b==null)return;
+   status.setText("MediaPipe 얼굴 인식 중...");
+   new Thread(()->{
+     try {
+       if(faceLandmarker==null){
+         BaseOptions base=BaseOptions.builder().setModelAssetPath("face_landmarker.task").build();
+         FaceLandmarker.FaceLandmarkerOptions options=FaceLandmarker.FaceLandmarkerOptions.builder()
+           .setBaseOptions(base).setNumFaces(1).build();
+         faceLandmarker=FaceLandmarker.createFromOptions(getApplicationContext(),options);
+       }
+       Bitmap argb=b.getConfig()==Bitmap.Config.ARGB_8888?b:b.copy(Bitmap.Config.ARGB_8888,false);
+       FaceLandmarkerResult result=faceLandmarker.detect(new BitmapImageBuilder(argb).build());
+       runOnUiThread(()->{
+         if(result.faceLandmarks().isEmpty()){status.setText("얼굴을 인식하지 못했습니다. 입술 중앙을 터치해 주세요.");return;}
+         portrait.setLandmarks(result.faceLandmarks().get(0));
+         status.setText("얼굴·눈·입술 자동 인식 완료. 음성 테스트를 눌러 주세요.");
+       });
+     }catch(Exception e){runOnUiThread(()->status.setText("얼굴 자동 인식 실패: "+e.getClass().getSimpleName()+". 입술을 직접 터치해 주세요."));}
+   }).start();
+ }
  void stopMouth(){speaking=false;handler.removeCallbacks(mouthTick);mouth.setText("━");portrait.setMouthOpen(0f);}
  @Override protected void onActivityResult(int request,int result,Intent data){super.onActivityResult(request,result,data);if(result!=RESULT_OK||data==null){if(request==SPEECH)status.setText("음성인식 결과가 없습니다. 구글 앱의 마이크 권한·한국어 언어팩·네트워크를 확인하거나 직접 입력해 주세요.");return;}
- if(request==PHOTO){Uri uri=data.getData();if(uri!=null){getContentResolver().takePersistableUriPermission(uri,Intent.FLAG_GRANT_READ_URI_PERMISSION);try(InputStream stream=getContentResolver().openInputStream(uri)){portrait.setPhoto(BitmapFactory.decodeStream(stream));}catch(Exception ex){status.setText("사진을 읽지 못했습니다.");}}}
+ if(request==PHOTO){Uri uri=data.getData();if(uri!=null){getContentResolver().takePersistableUriPermission(uri,Intent.FLAG_GRANT_READ_URI_PERMISSION);try(InputStream stream=getContentResolver().openInputStream(uri)){Bitmap photoBitmap=BitmapFactory.decodeStream(stream);portrait.setPhoto(photoBitmap);detectFace(photoBitmap);}catch(Exception ex){status.setText("사진을 읽지 못했습니다.");}}}
  if(request==SPEECH){ArrayList<String> words=data.getStringArrayListExtra(RecognizerIntent.EXTRA_RESULTS);if(words!=null&&!words.isEmpty())send(words.get(0));else status.setText("인식된 문장이 없습니다. 다시 말하거나 직접 입력해 주세요.");}}
  void send(String message){status.setText("인식: "+message+"\n서버 없이 음성으로 따라 말합니다.");speak(message);}
  void speak(String message){if(tts==null){status.setText("음성 엔진 준비 중입니다.");return;}status.setText("아바타 음성 출력: "+message);tts.speak(message,TextToSpeech.QUEUE_FLUSH,null,"reply");}
   class AvatarView extends View {
-  Bitmap bitmap; Paint paint=new Paint(3);float mouthOpen=0f;float mouthX=.5f,mouthY=.46f;boolean mouthSelected=false;
+  Bitmap bitmap; Paint paint=new Paint(3);float mouthOpen=0f;float mouthX=.5f,mouthY=.46f;boolean mouthSelected=false;float faceCX=.5f,faceCY=.4f,faceRX=.18f,faceRY=.25f;boolean detected=false;
   AvatarView(){super(MainActivity.this);}
-  void setPhoto(Bitmap b){bitmap=b;mouthSelected=false;mouthX=.5f;mouthY=.46f;invalidate();}
+  void setPhoto(Bitmap b){bitmap=b;mouthSelected=false;detected=false;mouthX=.5f;mouthY=.46f;invalidate();}
+  void setLandmarks(java.util.List<NormalizedLandmark> lm){
+    if(lm.size()<400)return;
+    NormalizedLandmark top=lm.get(10),chin=lm.get(152),left=lm.get(234),right=lm.get(454);
+    NormalizedLandmark lipTop=lm.get(13),lipBottom=lm.get(14);
+    mouthX=(lipTop.x()+lipBottom.x())*.5f;mouthY=(lipTop.y()+lipBottom.y())*.5f;
+    faceCX=(left.x()+right.x())*.5f;faceCY=(top.y()+chin.y())*.5f;
+    faceRX=Math.abs(right.x()-left.x())*.53f;faceRY=Math.abs(chin.y()-top.y())*.53f;
+    detected=true;mouthSelected=true;invalidate();
+  }
   @Override public boolean onTouchEvent(MotionEvent event){if(event.getAction()!=MotionEvent.ACTION_UP||bitmap==null)return true;float scale=Math.min((float)getWidth()/bitmap.getWidth(),(float)getHeight()/bitmap.getHeight());float w=bitmap.getWidth()*scale,h=bitmap.getHeight()*scale,l=(getWidth()-w)/2f,t=(getHeight()-h)/2f;float x=(event.getX()-l)/w,y=(event.getY()-t)/h;if(x>=0&&x<=1&&y>=0&&y<=1){mouthX=x;mouthY=y;mouthSelected=true;status.setText("입술 위치 지정 완료. 음성 테스트를 눌러 확인하세요.");invalidate();}return true;}
   void setMouthOpen(float amount){mouthOpen=amount;invalidate();}
   @Override protected void onDraw(Canvas canvas){super.onDraw(canvas);if(bitmap==null)return;
@@ -66,30 +103,33 @@ public class MainActivity extends Activity {
     float left=(getWidth()-width)/2f,top=(getHeight()-height)/2f;
     RectF dst=new RectF(left,top,left+width,top+height);canvas.drawBitmap(bitmap,null,dst,paint);
     if(mouthOpen<=0.01f||!mouthSelected)return;
-    // Subtle jaw opening: preserve the original upper lip and cheeks.
     float mx=left+width*mouthX,my=top+height*mouthY;
-    float mw=width*.115f;
-    float gap=Math.min(width*.020f,height*.012f)*mouthOpen;
-    float lipH=Math.min(width*.012f,height*.008f);
-    // Dark interior appears only between the lips, rather than stretching the photograph.
+    // Move only the facial oval by a subtle amount, preserving the clothing.
+    if(detected){
+      float cx=left+width*faceCX,cy=top+height*faceCY;
+      float rx=width*faceRX,ry=height*faceRY;
+      canvas.save();
+      Path mask=new Path();
+      mask.addOval(new RectF(cx-rx,cy-ry,cx+rx,cy+ry),Path.Direction.CW);
+      canvas.clipPath(mask);
+      canvas.rotate((float)Math.sin(android.os.SystemClock.uptimeMillis()*.003)*1.3f,cx,cy);
+      canvas.translate((float)Math.sin(android.os.SystemClock.uptimeMillis()*.002)*width*.002f,-height*.0015f*mouthOpen);
+      canvas.drawBitmap(bitmap,null,dst,paint);
+      canvas.restore();
+    }
+    float mw=width*(detected?.075f:.115f);
+    float gap=Math.min(width*.018f,height*.012f)*mouthOpen;
     Paint inside=new Paint(3);
-    inside.setColor(Color.rgb(65,23,30));
-    RectF opening=new RectF(mx-mw*.40f,my-gap*.38f,mx+mw*.40f,my+gap*.65f);
-    canvas.drawOval(opening,inside);
-    // Keep the lip edge soft and close to the source photograph.
-    Paint lip=new Paint(3);
-    lip.setStyle(Paint.Style.STROKE);
-    lip.setStrokeWidth(Math.max(1f,lipH*.42f));
-    lip.setColor(Color.argb(140,116,57,65));
-    android.graphics.Path upper=new android.graphics.Path();
-    upper.moveTo(mx-mw*.45f,my);
-    upper.quadTo(mx,my-gap*.52f,mx+mw*.45f,my);
+    inside.setColor(Color.rgb(58,21,29));
+    canvas.drawOval(new RectF(mx-mw*.38f,my-gap*.35f,mx+mw*.38f,my+gap*.68f),inside);
+    Paint lip=new Paint(3);lip.setStyle(Paint.Style.STROKE);
+    lip.setStrokeWidth(Math.max(1f,width*.0018f));
+    lip.setColor(Color.argb(120,112,56,65));
+    Path upper=new Path();upper.moveTo(mx-mw*.43f,my);upper.quadTo(mx,my-gap*.46f,mx+mw*.43f,my);
     canvas.drawPath(upper,lip);
-    android.graphics.Path lower=new android.graphics.Path();
-    lower.moveTo(mx-mw*.45f,my);
-    lower.quadTo(mx,my+gap*.84f,mx+mw*.45f,my);
+    Path lower=new Path();lower.moveTo(mx-mw*.43f,my);lower.quadTo(mx,my+gap*.8f,mx+mw*.43f,my);
     canvas.drawPath(lower,lip);
   }
  }
- @Override protected void onDestroy(){stopMouth();if(tts!=null){tts.stop();tts.shutdown();}super.onDestroy();}
+ @Override protected void onDestroy(){stopMouth();if(tts!=null){tts.stop();tts.shutdown();}if(faceLandmarker!=null)faceLandmarker.close();super.onDestroy();}
 }
