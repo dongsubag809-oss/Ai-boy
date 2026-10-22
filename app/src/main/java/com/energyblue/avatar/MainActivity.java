@@ -44,7 +44,7 @@ public class MainActivity extends Activity {
  mouth=new TextView(this);mouth.setText("━");mouth.setTextSize(27);mouth.setTextColor(Color.RED);mouth.setGravity(Gravity.CENTER);
  FrameLayout.LayoutParams mp=new FrameLayout.LayoutParams(55,55,Gravity.BOTTOM|Gravity.CENTER_HORIZONTAL);mp.bottomMargin=55;mouth.setVisibility(View.GONE);frame.addView(mouth,mp);
  root.addView(frame,new LinearLayout.LayoutParams(-1,0,1));
- TextView guide=new TextView(this);guide.setText("MediaPipe가 얼굴과 입술을 자동 인식합니다. 실패하면 입술을 터치하세요.");root.addView(guide);
+ TextView guide=new TextView(this);guide.setText("MediaPipe가 얼굴 위치를 자동 인식합니다. 검은 입술 효과는 제거했습니다.");root.addView(guide);
  status=new TextView(this);status.setText("사진을 선택하세요.");status.setVisibility(View.VISIBLE);root.addView(status);
  Button demo=new Button(this);demo.setText("사진 움직임 / 음성 테스트");root.addView(demo);demo.setOnClickListener(v->speak("안녕하세요. 사진 아바타가 말하고 있습니다. 입 움직임을 확인해 주세요."));
  Button photo=new Button(this);photo.setText("사진 선택");root.addView(photo);
@@ -117,18 +117,9 @@ public class MainActivity extends Activity {
       canvas.drawBitmap(bitmap,null,dst,paint);
       canvas.restore();
     }
-    float mw=width*(detected?.075f:.115f);
-    float gap=Math.min(width*.018f,height*.012f)*mouthOpen;
-    Paint inside=new Paint(3);
-    inside.setColor(Color.rgb(58,21,29));
-    canvas.drawOval(new RectF(mx-mw*.38f,my-gap*.35f,mx+mw*.38f,my+gap*.68f),inside);
-    Paint lip=new Paint(3);lip.setStyle(Paint.Style.STROKE);
-    lip.setStrokeWidth(Math.max(1f,width*.0018f));
-    lip.setColor(Color.argb(120,112,56,65));
-    Path upper=new Path();upper.moveTo(mx-mw*.43f,my);upper.quadTo(mx,my-gap*.46f,mx+mw*.43f,my);
-    canvas.drawPath(upper,lip);
-    Path lower=new Path();lower.moveTo(mx-mw*.43f,my);lower.quadTo(mx,my+gap*.8f,mx+mw*.43f,my);
-    canvas.drawPath(lower,lip);
+    // Never paint artificial dark mouth shapes over the user's original lips.
+    // Natural lip-sync requires a dedicated on-device animation model.
+
   }
  }
  @Override protected void onDestroy(){stopMouth();if(tts!=null){tts.stop();tts.shutdown();}if(faceLandmarker!=null)faceLandmarker.close();super.onDestroy();}
