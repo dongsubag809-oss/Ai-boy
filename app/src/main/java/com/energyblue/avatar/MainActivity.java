@@ -36,8 +36,8 @@ public class MainActivity extends Activity {
  mouth=new TextView(this);mouth.setText("━");mouth.setTextSize(27);mouth.setTextColor(Color.RED);mouth.setGravity(Gravity.CENTER);
  FrameLayout.LayoutParams mp=new FrameLayout.LayoutParams(55,55,Gravity.BOTTOM|Gravity.CENTER_HORIZONTAL);mp.bottomMargin=55;mouth.setVisibility(View.GONE);frame.addView(mouth,mp);
  root.addView(frame,new LinearLayout.LayoutParams(-1,0,1));
- status=new TextView(this);status.setText("사진을 선택하고 HTTPS 서버 주소를 설정하세요.");root.addView(status);
- endpoint=new EditText(this);endpoint.setSingleLine(true);endpoint.setHint("HTTPS AI 서버 URL");endpoint.setText(getPreferences(0).getString("endpoint",""));root.addView(endpoint);
+ status=new TextView(this);status.setText("사진을 선택하세요.");status.setVisibility(View.GONE);root.addView(status);
+ endpoint=new EditText(this);endpoint.setVisibility(View.GONE);endpoint.setText(getPreferences(0).getString("endpoint",""));
  Button photo=new Button(this);photo.setText("사진 선택");root.addView(photo);
  photo.setOnClickListener(v->{Intent i=new Intent(Intent.ACTION_OPEN_DOCUMENT);i.setType("image/*");i.addCategory(Intent.CATEGORY_OPENABLE);startActivityForResult(i,PHOTO);});
  Button talk=new Button(this);talk.setText("마이크로 대화하기");root.addView(talk);
