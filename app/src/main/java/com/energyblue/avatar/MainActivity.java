@@ -153,6 +153,7 @@ public class MainActivity extends Activity {
       canvas.translate((float)Math.sin(android.os.SystemClock.uptimeMillis()*.002)*width*.002f,-height*.0015f*mouthOpen);
       canvas.drawBitmap(bitmap,null,dst,paint);
       canvas.restore();
+      postInvalidateDelayed(50);
     }
     // Never paint artificial dark mouth shapes over the user's original lips.
     // Natural lip-sync and blinking require a real on-device image animation model.
